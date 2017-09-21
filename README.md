@@ -4,7 +4,11 @@
 
 ||Rps|Cpu|Memory|
 |-|-|-|-|
-|Node|10650.000000|95%|30M|
-|Dotnet core|38150.148438|180%|10M (maybe multi-thread)|
-|Boost asio|48332.101562|85%|400K|
-|Uvloop|28439.199219|95%|10M|
+|Boost asio|158273|~~100%~~|~~400K~~|
+|Boost asio coro|153344|~~100%~~|~~400K~~|
+|Java nio|152205|~~95%~~|~~10M~~|
+|Kotlin nio|153199|~~95%~~|~~10M~~|
+|Netty|103745|~~95%~~|~~10M~~|
+|Uvloop|61100|~~95%~~|~~10M~~|
+|Node|48832|~~95%~~|~~30M~~|
+|~~Dotnet core~~|~~38150.148438~~|~~180%~~|~~10M (maybe multi-threaded)~~|

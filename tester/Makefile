@@ -25,11 +25,11 @@ all : $(TARGET)
 #chmod 700 $(TARGET)
 
 $(TARGET) : $(OBJS)
-	$(CXX) $(OBJS) $(LDFLAGS) -Wall -O3 -o $@
+	$(CXX) $(OBJS) $(LDFLAGS) -Wall -O2 -o $@
 	#$(CXX) $(OBJS) $(LDFLAGS) -Wall -g -o $@
 
 .cpp.o :
-	$(CXX) $(INCLUDES) -Wall -O3 -c $<
+	$(CXX) $(INCLUDES) -Wall -O2 -c $<
 	#$(CXX) $(INCLUDES) -Wall -g -c $<
 #$(CXX) $(INCLUDES) -c -o $@ $<
 
