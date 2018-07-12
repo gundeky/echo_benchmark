@@ -19,6 +19,10 @@
 // 9005 : connect test
 #define PORT           9000
 
+// #define TIMEOUT_MS     100 * 1000
+#define TIMEOUT_MS     5 * 1000
+// #define TIMEOUT_MS     0
+
 // using namespace std::placeholders;
 using namespace boost::placeholders;
 
@@ -39,7 +43,7 @@ public:
 	void startRecv()
 	{
 		if (_soc.readSome(recvBuf, sizeof(recvBuf),
-					boost::bind(&EchoClient::onRead, this, _1, _2)) == false)    // async recv 시작
+					boost::bind(&EchoClient::onRead, this, _1, _2), TIMEOUT_MS) == false)    // async recv 시작
 		{
 			// aio::Error& err = _soc.error();
 			// LOG_INFO("recv fail [%d][%s]", err.code, err.detail);
@@ -68,7 +72,7 @@ public:
 		memcpy(sendBuf, recvBuf, bytes);
 
 		if (_soc.writeAll(sendBuf, bytes, 
-					boost::bind(&EchoClient::onWrite, this, _1, _2)) == false)
+					boost::bind(&EchoClient::onWrite, this, _1, _2), TIMEOUT_MS) == false)
 		{
 			// aio::Error& err = _soc.error();
 			// LOG_INFO("send fail [%d][%s]", err.code, err.detail);
@@ -166,7 +170,10 @@ extern aio::Proactor* g_proactor;
 
 int main(int argc, char* argv[])
 {
+#ifdef DEBUG
+#else
 	LOG_INIT(STDOUT_FILENO, cpl::Logger::LEVEL_ERROR);
+#endif
 
 	SetSigHandler();
 	aio::Proactor proactor;

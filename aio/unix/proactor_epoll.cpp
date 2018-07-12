@@ -27,7 +27,8 @@ bool Proactor::run()
 // 		LOG_DEBUG("proactor enter epoll");
 // #endif
 
-		int ret = ::epoll_wait(_fd, events, MAX_HANDLE, 1000);
+		// int ret = ::epoll_wait(_fd, events, MAX_HANDLE, 1000);
+		int ret = ::epoll_wait(_fd, events, MAX_HANDLE, 100);
 		if (_stop == true)
 		{
 #ifdef DEBUG
@@ -47,7 +48,7 @@ bool Proactor::run()
 		}
 		else if (ret == 0)    // timeout
 		{
-			// TODO check idle timeout later
+			_processTimer();    // 타이머만 확인하고 나간다
 			continue;
 		}
 
@@ -97,6 +98,8 @@ bool Proactor::run()
 				_processCompletion();
 			}
 		}
+
+		_processTimer();    // 다 끝나고 타이머 확인
 	}
 	return true;
 }

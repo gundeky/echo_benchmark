@@ -181,6 +181,8 @@ Socket::~Socket()
 		_proactor->_remove(&_rt);
 	if (_wt.prev != NULL)
 		_proactor->_remove(&_wt);
+	_proactor->_popTimer(&_rt);
+	_proactor->_popTimer(&_wt);
 }
 
 // bool Socket::connect(const char* ip, unsigned short port, T* t, Callback cb)
@@ -212,7 +214,7 @@ Socket::~Socket()
 // 	return true;
 // }
 
-bool Socket::readSome(char* buf, int size, Callback cb)
+bool Socket::readSome(char* buf, int size, Callback cb, int timeoutMsec)
 {
 #ifdef DEBUG
 	LOG_DEBUG("readSome 1 [%d]", _soc);
@@ -241,6 +243,7 @@ bool Socket::readSome(char* buf, int size, Callback cb)
 			LOG_DEBUG("readSome 3 [%d]", _soc);
 #endif
 			_rt.set(0, Token::SOME);    // onRead 에서 더 읽는다
+			_proactor->_pushTimer(&_rt, timeoutMsec);
 		}
 		else
 		{
@@ -262,7 +265,7 @@ bool Socket::readSome(char* buf, int size, Callback cb)
 	return true;
 }
 
-bool Socket::readAll(char* buf, int size, Callback cb)
+bool Socket::readAll(char* buf, int size, Callback cb, int timeoutMsec)
 {
 #ifdef DEBUG
 	LOG_DEBUG("readAll 1 [%d]", _soc);
@@ -291,6 +294,7 @@ bool Socket::readAll(char* buf, int size, Callback cb)
 			LOG_DEBUG("readAll 3 [%d]", _soc);
 #endif
 			_rt.set(0, Token::ALL);    // onRead 에서 더 읽는다
+			_proactor->_pushTimer(&_rt, timeoutMsec);
 		}
 		else
 		{
@@ -309,6 +313,7 @@ bool Socket::readAll(char* buf, int size, Callback cb)
 			LOG_DEBUG("readAll 5 [%d]", _soc);
 #endif
 			_rt.set(ret, Token::ALL);    // onRead 에서 더 읽는다
+			_proactor->_pushTimer(&_rt, timeoutMsec);
 		}
 		else    // 다 읽은 경우
 		{
@@ -379,7 +384,7 @@ bool Socket::readAll(char* buf, int size, Callback cb)
 // 	return true;
 // }
 
-bool Socket::writeAll(char* buf, int size, Callback cb)
+bool Socket::writeAll(char* buf, int size, Callback cb, int timeoutMsec)
 {
 #ifdef DEBUG
 	LOG_DEBUG("writeAll 1 [%d]", _soc);
@@ -403,6 +408,7 @@ bool Socket::writeAll(char* buf, int size, Callback cb)
 			LOG_DEBUG("writeAll 2 [%d]", _soc);
 #endif
 			_wt.set(0, Token::ALL);    // onWrite 에서 더 읽는다
+			_proactor->_pushTimer(&_wt, timeoutMsec);
 		}
 		else
 		{
@@ -421,6 +427,7 @@ bool Socket::writeAll(char* buf, int size, Callback cb)
 			LOG_DEBUG("writeAll 4 [%d]", _soc);
 #endif
 			_wt.set(ret, Token::ALL);    // onWrite 에서 더 읽는다
+			_proactor->_pushTimer(&_wt, timeoutMsec);
 		}
 		else    // 다 write 한 경우
 		{
@@ -1097,21 +1104,67 @@ void Proactor::_processCompletion()
 	while (_head.next != &_head)
 	{
 		Token* cur = _head.next;    // 작업 대상
-		_remove(cur);        // 빼버린다
+		_remove(cur);        // 완료 큐에서 삭제
+		_popTimer(cur);      // 타이머에서 삭제
 		cur->mode = Token::NONE;
 		cur->cb(cur->err, cur->ioSize);
 	}
+}
 
-	// Token* cur = _head.next;
-	// while (cur != &_head)
-	// {
-	// 	Token* temp = cur;    // 작업 대상
-	// 	cur = cur->next;      // 미리 이동한다
-	// 	_remove(temp);        // 빼버린다
-    //
-	// 	temp->mode = Token::NONE;
-	// 	temp->cb(temp->err, temp->ioSize);
-	// }
+void Proactor::_pushTimer(Token* token, int timeoutMsec)
+{
+	if (timeoutMsec == 0)
+		return;
+
+	struct timeval add;
+	add.tv_sec = timeoutMsec / 1000;
+	add.tv_usec = (timeoutMsec % 1000) * 1000;
+	struct timeval cur;
+	gettimeofday(&cur, 0);
+// #ifdef DEBUG
+// 		LOG_DEBUG("_pushTimer 1: [%d.%06d]", cur.tv_sec, cur.tv_usec);
+// #endif
+	timeradd(&cur, &add, &token->tv);
+// #ifdef DEBUG
+// 		LOG_DEBUG("_pushTimer 1: [%d.%06d]", token->tv.tv_sec, token->tv.tv_usec);
+// #endif
+
+	if (_timerList.insert(token).second == false)
+	{
+#ifdef DEBUG
+		LOG_ERROR("_pushTimer ERROR");
+#endif
+	}
+}
+
+void Proactor::_popTimer(Token* token)
+{
+	_timerList.erase(token);
+}
+
+void Proactor::_processTimer()
+{
+	struct timeval now;
+	gettimeofday(&now, 0);
+	while (_timerList.begin() != _timerList.end())
+	{
+		// std::set<A*, Token::LessTimer>::iterator itr = _timerList.begin();
+		auto itr = _timerList.begin();
+		Token* cur = (*itr);
+		// 만약 cur->tv 가 현재 시간보다 작다면 타임아웃
+// #ifdef DEBUG
+// 		LOG_DEBUG("_processTimer: [%d.%06d] [%d.%06d]", cur->tv.tv_sec, cur->tv.tv_usec, now.tv_sec, now.tv_usec);
+// #endif
+		if (timercmp(&(cur->tv), &now, <))
+		{
+			_timerList.erase(itr);    // 타이머에서 삭제
+			cur->mode = Token::NONE;
+			cur->err.set(ETIMEDOUT, "timeout");
+			cur->cb(cur->err, 0);
+		}
+		else
+			break;
+	}
 }
 
 }    // end of namespace aio

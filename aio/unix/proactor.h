@@ -7,9 +7,11 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/uio.h>
+#include <sys/time.h>
 #include <unistd.h>
 #include <boost/function.hpp>
 #include <vector>
+#include <set>
 
 #ifdef DEBUG
 #include "cpl_log.h"
@@ -83,6 +85,7 @@ struct Token
 	Error err;
 	Token* prev;
 	Token* next;
+	struct timeval tv;
 
 	static const char NONE = 'N';
 	static const char SOME = 'S';
@@ -94,6 +97,14 @@ struct Token
 	void init(char* buf, int bufSize, Callback cb);
 	void set(int ioSize, char mode);
 	void add(int ioSize);
+
+	struct LessTimer
+	{
+		bool operator() (Token* lhs, Token* rhs)
+		{
+			return timercmp(&(lhs->tv), &(rhs->tv), <);
+		}
+	};
 };
 
 class Proactor;    // forward declaration
@@ -106,9 +117,9 @@ class Socket : public EventHandler
 		~Socket();
 
 		// bool connect(const char* ip, unsigned short port, Callback cb);
-		bool readSome(char* buf, int size, Callback cb);
-		bool readAll(char* buf, int size, Callback cb);
-		bool writeAll(char* buf, int size, Callback cb);
+		bool readSome(char* buf, int size, Callback cb, int timeoutMsec = 0);
+		bool readAll(char* buf, int size, Callback cb, int timeoutMsec = 0);
+		bool writeAll(char* buf, int size, Callback cb, int timeoutMsec = 0);
 		// bool readvAll(const IoVec& iov, Callback cb);  // TODO iov 를 사용하지 말고, 각 파라미터 2개, 3개 함수를 작성
 		// bool writevAll(const IoVec& iov, Callback cb); // TODO iov 를 사용하지 말고, 각 파라미터 2개, 3개 함수를 작성
 
@@ -200,6 +211,9 @@ class Proactor
 		void _enqueue(Token* token);
 		void _remove(Token* token);
 		void _processCompletion();
+		void _pushTimer(Token* tkn, int timeoutMsec);
+		void _popTimer(Token* token);
+		void _processTimer();
 
 	private:
 		int _fd;
@@ -207,6 +221,7 @@ class Proactor
 		Error _err;
 		Token _head;
 		std::vector<EventHandler*> _deleted;
+		std::set<Token*, Token::LessTimer> _timerList;
 		friend class Socket;
 		friend class Acceptor;
 };

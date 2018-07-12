@@ -20,7 +20,8 @@ bool Proactor::create()
 bool Proactor::run()
 {
 	struct kevent events[MAX_HANDLE];
-	struct timespec timeout = { 1, 0 };    // 1 second
+	// struct timespec timeout = { 1, 0 };    // 1 second
+	struct timespec timeout = { 0, 100 * 1000000 };    // 100 millisecond
 	while(1)
 	{
 #ifdef DEBUG
@@ -47,7 +48,7 @@ bool Proactor::run()
 		}
 		else if (ret == 0)    // timeout
 		{
-			// TODO check idle timeout later
+			_processTimer();    // 타이머만 확인하고 나간다
 			continue;
 		}
 
@@ -97,6 +98,8 @@ bool Proactor::run()
 				_processCompletion();
 			}
 		}
+
+		_processTimer();    // 다 끝나고 타이머 확인
 	}
 	return true;
 }
