@@ -199,7 +199,7 @@ class Proactor
 		Proactor();
 		~Proactor() {}
 
-		bool create();
+		bool create(int pollIntervalMsec = 100);
 		bool run();
 		void stop();
 
@@ -216,6 +216,7 @@ class Proactor
 		void _processTimer();
 
 	private:
+		int _pollIntervalMsec;
 		int _fd;
 		bool _stop;
 		Error _err;

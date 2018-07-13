@@ -6,8 +6,9 @@
 namespace aio
 {
 
-bool Proactor::create()
+bool Proactor::create(int pollIntervalMsec)
 {
+	_pollIntervalMsec = pollIntervalMsec;
 	_fd = ::kqueue(); 
 	if (_fd == -1)
 	{
@@ -20,8 +21,10 @@ bool Proactor::create()
 bool Proactor::run()
 {
 	struct kevent events[MAX_HANDLE];
-	// struct timespec timeout = { 1, 0 };    // 1 second
-	struct timespec timeout = { 0, 100 * 1000000 };    // 100 millisecond
+	struct timespec timeout = {
+		_pollIntervalMsec / 1000,
+		(_pollIntervalMsec % 1000) * 1000000
+	};
 	while(1)
 	{
 #ifdef DEBUG

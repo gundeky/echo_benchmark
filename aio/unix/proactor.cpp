@@ -1071,7 +1071,7 @@ void Acceptor::onClose()
 	_cb(_err, INVALID_SOCKET);
 }
 
-Proactor::Proactor() : _fd(-1), _stop(false)
+Proactor::Proactor() : _pollIntervalMsec(100), _fd(-1), _stop(false)
 {
 	_err.clear();
 	// _head.clear();

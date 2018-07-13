@@ -7,8 +7,9 @@
 namespace aio
 {
 
-bool Proactor::create()
+bool Proactor::create(int pollIntervalMsec)
 {
+	_pollIntervalMsec = pollIntervalMsec;
 	_fd = ::epoll_create(MAX_HANDLE); 
 	if (_fd == -1)
 	{
@@ -27,8 +28,7 @@ bool Proactor::run()
 // 		LOG_DEBUG("proactor enter epoll");
 // #endif
 
-		// int ret = ::epoll_wait(_fd, events, MAX_HANDLE, 1000);
-		int ret = ::epoll_wait(_fd, events, MAX_HANDLE, 100);
+		int ret = ::epoll_wait(_fd, events, MAX_HANDLE, _pollIntervalMsec);
 		if (_stop == true)
 		{
 #ifdef DEBUG
