@@ -1,0 +1,5 @@
+*.o
+aio/echo/test
+boost/test
+go/test
+tester/test
